@@ -93,15 +93,15 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	/* Listen to the gorram socket */
+	if (listen(sfd, 1) < 0)
+	{
+		fprintf(stderr, "Error in listen: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
 	while (1)
 	{
-		/* Listen to the gorram socket */
-		if (listen(sfd, 1) < 0)
-		{
-			fprintf(stderr, "Error in listen: %s\n", strerror(errno));
-			exit(EXIT_FAILURE);
-		}
-
 		printf("Calling accept\n");
 		connection = accept(sfd, NULL, NULL);
 		if (connection < 0)
@@ -117,6 +117,7 @@ int main(int argc, char *argv[])
 		printf("Server writes %s\n", message);
 
 		write(connection, message, BUF_SIZE);
+		// memset(buf, 0, BUF_SIZE);
 		// shutdown = strcmp("close", message);
 	}
 	close(connection); /* Tear down the session with client */

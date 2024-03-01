@@ -57,22 +57,23 @@ int main(int argc, char *argv[])
 
 	freeaddrinfo(result); /* No longer needed */
 
-	while (1)
-	{
-		if (rp == NULL)
-		{ /* No address succeeded */
-			fprintf(stderr, "Could not connect: %s\n", strerror(errno));
-			exit(EXIT_FAILURE);
-		}
+	if (rp == NULL)
+	{ /* No address succeeded */
+		fprintf(stderr, "Could not connect: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 
+	if(1)
+	{
 		printf("Client write here: \n");
 		fgets(message, BUF_SIZE, stdin);
 
 		bytes = write(sfd, message, BUF_SIZE);
-		bytes = read(sfd, message, BUF_SIZE);
+		bytes = read(sfd, buf, BUF_SIZE);
+		printf("Client sent %s", message);
 		printf("PID: %d; client received %s\n", getpid(), buf);
-
-		close(sfd);
 	}
+		close(sfd);
+
 	return 0;
 }
