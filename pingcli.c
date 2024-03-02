@@ -10,22 +10,31 @@
 #define BUF_SIZE 500
 
 struct clientData {
-	char message[BUF_SIZE];
+	char message[BUF_SIZE-27];
 	char username[25];
 };
 
 int main(int argc, char *argv[])
 {
 	int sfd, s, bytes;
-	char buf[BUF_SIZE];
+	char buf[BUF_SIZE-27];
 	struct clientData cd;
 	size_t len;
 	ssize_t nread;
 	struct addrinfo hints;
 	struct addrinfo *result, *rp;
 
-	/* Obtain address(es) matching host/port. */
+	if(argv[2] != NULL)
+	{
+		strcpy(cd.username, argv[2]);
+	}
+	else
+	{
+		strcpy(cd.username, "guest");
+	}
 
+
+	/* Obtain address(es) matching host/port. */
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;	 /* Allow IPv4 or IPv6 */
 	hints.ai_socktype = SOCK_STREAM; /* TCP socket */
@@ -73,7 +82,7 @@ int main(int argc, char *argv[])
 		printf("Client write here: \n");
 		fgets(cd.message, BUF_SIZE, stdin);
 
-		bytes = write(sfd, cd.message, BUF_SIZE);
+		bytes = write(sfd, strcat(strcat(cd.username, ": "), cd.message), BUF_SIZE);
 		bytes = read(sfd, buf, BUF_SIZE);
 		printf("Client sent %s", cd.message);
 		printf("PID: %d; client received %s\n", getpid(), buf);
