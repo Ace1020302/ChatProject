@@ -9,11 +9,16 @@
 
 #define BUF_SIZE 500
 
+struct clientData {
+	char message[BUF_SIZE];
+	char username[25];
+};
+
 int main(int argc, char *argv[])
 {
 	int sfd, s, bytes;
 	char buf[BUF_SIZE];
-	char message[BUF_SIZE];
+	struct clientData cd;
 	size_t len;
 	ssize_t nread;
 	struct addrinfo hints;
@@ -27,54 +32,53 @@ int main(int argc, char *argv[])
 	hints.ai_flags = AI_PASSIVE;
 	hints.ai_protocol = IPPROTO_TCP; /* TCP */
 
-	while(1)
+	while (1)
 	{
-	s = getaddrinfo(argv[1], "8888", &hints, &result);
-	if (s != 0)
-	{
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-		exit(EXIT_FAILURE);
-	}
-
-	/* getaddrinfo() returns a list of address structures.
-		 Try each address until we successfully connect(2).
-		 If socket(2) (or connect(2)) fails, we (close the socket
-		 and) try the next address. */
-
-	for (rp = result; rp != NULL; rp = rp->ai_next)
-	{
-		sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-		if (sfd == -1)
+		s = getaddrinfo(argv[1], "8888", &hints, &result);
+		if (s != 0)
 		{
-			continue;
+			fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+			exit(EXIT_FAILURE);
 		}
 
-		if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1)
+		/* getaddrinfo() returns a list of address structures.
+			 Try each address until we successfully connect(2).
+			 If socket(2) (or connect(2)) fails, we (close the socket
+			 and) try the next address. */
+
+		for (rp = result; rp != NULL; rp = rp->ai_next)
 		{
-			break;
-		} /* Success */
+			sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+			if (sfd == -1)
+			{
+				continue;
+			}
 
-		close(sfd);
-	}
+			if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1)
+			{
+				break;
+			} /* Success */
 
-	freeaddrinfo(result); /* No longer needed */
+			close(sfd);
+		}
 
-	if (rp == NULL)
-	{ /* No address succeeded */
-		fprintf(stderr, "Could not connect: %s\n", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
+		freeaddrinfo(result); /* No longer needed */
 
-	
+		if (rp == NULL)
+		{ /* No address succeeded */
+			fprintf(stderr, "Could not connect: %s\n", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+
 		printf("Client write here: \n");
-		fgets(message, BUF_SIZE, stdin);
+		fgets(cd.message, BUF_SIZE, stdin);
 
-		bytes = write(sfd, message, BUF_SIZE);
+		bytes = write(sfd, cd.message, BUF_SIZE);
 		bytes = read(sfd, buf, BUF_SIZE);
-		printf("Client sent %s", message);
+		printf("Client sent %s", cd.message);
 		printf("PID: %d; client received %s\n", getpid(), buf);
 	}
-		close(sfd);
+	close(sfd);
 
 	return 0;
 }
