@@ -1,11 +1,7 @@
 all: server client
 
 server: server.c
-	gcc -o server pingser.c
+	gcc -o server server.c
 
 client: client.c
-	gcc -o client pingcli.c
-
-clean: server client
-	rm server
-	rm client
+	gcc -o client client.c
