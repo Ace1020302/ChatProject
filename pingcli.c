@@ -27,6 +27,8 @@ int main(int argc, char *argv[])
 	hints.ai_flags = AI_PASSIVE;
 	hints.ai_protocol = IPPROTO_TCP; /* TCP */
 
+	while(1)
+	{
 	s = getaddrinfo(argv[1], "8888", &hints, &result);
 	if (s != 0)
 	{
@@ -63,8 +65,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if(1)
-	{
+	
 		printf("Client write here: \n");
 		fgets(message, BUF_SIZE, stdin);
 
