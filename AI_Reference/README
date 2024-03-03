@@ -1,8 +1,9 @@
 ==========================================================================
 Currently, multiple clients can connect to the server and send messages.
 There are no issues with clients being disconnected, or messages not showing up on the server.
+Clients can disconnect from the server by typing quit.
 --------------------------------------------------------------------------
 TODO
-- Allow clients to disconnect from the server without using ctrl + c
-- Allow clients to see other users messages from their screen (not just on the server screen).
+- Allow clients to see other user's messages from their screen (not just on the server screen).
+- Add a timer for the server to close on its own if no clients are connected.
 ===========================================================================
