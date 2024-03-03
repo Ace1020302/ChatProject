@@ -10,6 +10,7 @@
 
 #define BUF_SIZE 500
 #define PORT_NUM 8888
+#define DISCONNECT_KEYWORD "quit\n"
 
 /* Function to handle communication with a client */
 void handle_client(int client_socket) {
@@ -23,7 +24,7 @@ void handle_client(int client_socket) {
             exit(EXIT_FAILURE);
         }
         printf("Received message: %s", buf);
-        if (strcmp(buf, "quit\n") == 0) {
+        if (strcmp(buf, DISCONNECT_KEYWORD) == 0) { // Use the disconnect keyword here
             printf("Client disconnected.\n");
             close(client_socket);
             break;
