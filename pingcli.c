@@ -6,23 +6,82 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <fcntl.h>
+#include <netinet/in.h>
 
 #define BUF_SIZE 500
+#define USER_SIZE 25
+#define MSG_SIZE 473
 
 struct clientData {
-	char message[BUF_SIZE-27];
-	char username[25];
+	char message[MSG_SIZE];
+	char username[USER_SIZE];
 };
+
+//struct sockaddr_in *createIPv4Address(char *ip, int port) {
+//	
+//	// Allocate a struct that contains necessary client data for connection
+//	struct sockadrr_in *address = malloc(sizeof(struct sockaddr_in);
+//	address.sin_family = AF_INET;
+//	adress.sin_port = htons(port);
+//
+//	if(strlen(ip) == 0)
+//
+//}
+
+
+void clientListen(int clientSocket) {
+	char buf[BUF_SIZE];
+
+	while (1)
+	{
+		ssize_t amountReceived = recv(clientSocket, buf, BUF_SIZE), 0);
+
+		// buf contains propagated message from server
+		// As long as there are characters in the received buf, write to chat
+		if (amountReceived > 0)
+		{
+			buf[amountReceived] = 0;
+			printf("%s\n", buf);
+		}
+		else 
+			break;
+	}
+
+	close(clientSocket);
+}
+
+void startListenThread(int clientSocket) {
+	pthread_t id;
+	pthread_create(&id, NULL, clientListen, clientSocket);
+}
+
+void clientWrite(int clientSocket, char *user) {
+ 	char* msg[MSG_SIZE];
+	printf("Client write here: \n");
+	fgets(msg, MSG_SIZE, stdin);
+	char* payload = strcat(strcat(user, ": "), msg);
+	write(clientSocket, payload, strlen(payload));
+}
+
+
+
 
 int main(int argc, char *argv[])
 {
-	int sfd, s, bytes;
-	char buf[BUF_SIZE-27];
+	int bytes;
+	char buf[BUF_SIZE];
 	struct clientData cd;
 	size_t len;
 	ssize_t nread;
-	struct addrinfo hints;
-	struct addrinfo *result, *rp;
+
+	struct sockaddr_in server_address;
+	int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+	int status = 0;
+	int PORT_NUM = 3500; 
+
+	//int returnCode = system("echo Hello World");
 
 	if(argv[2] != NULL)
 	{
@@ -33,61 +92,32 @@ int main(int argc, char *argv[])
 		strcpy(cd.username, "guest");
 	}
 
-
-	/* Obtain address(es) matching host/port. */
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_UNSPEC;	 /* Allow IPv4 or IPv6 */
-	hints.ai_socktype = SOCK_STREAM; /* TCP socket */
-	hints.ai_flags = AI_PASSIVE;
-	hints.ai_protocol = IPPROTO_TCP; /* TCP */
-
-	while (1)
+	if (socket < 0)
 	{
-		s = getaddrinfo(argv[1], "8888", &hints, &result);
-		if (s != 0)
-		{
-			fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-			exit(EXIT_FAILURE);
-		}
-
-		/* getaddrinfo() returns a list of address structures.
-			 Try each address until we successfully connect(2).
-			 If socket(2) (or connect(2)) fails, we (close the socket
-			 and) try the next address. */
-
-		for (rp = result; rp != NULL; rp = rp->ai_next)
-		{
-			sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-			if (sfd == -1)
-			{
-				continue;
-			}
-
-			if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1)
-			{
-				break;
-			} /* Success */
-
-			close(sfd);
-		}
-
-		freeaddrinfo(result); /* No longer needed */
-
-		if (rp == NULL)
-		{ /* No address succeeded */
-			fprintf(stderr, "Could not connect: %s\n", strerror(errno));
-			exit(EXIT_FAILURE);
-		}
-
-		printf("Client write here: \n");
-		fgets(cd.message, BUF_SIZE, stdin);
-
-		bytes = write(sfd, strcat(strcat(cd.username, ": "), cd.message), BUF_SIZE);
-		bytes = read(sfd, buf, BUF_SIZE);
-		printf("Client sent %s", cd.message);
-		printf("PID: %d; client received %s\n", getpid(), buf);
+		perror("Socket creation failure");
+		exit(EXIT_FAILURE);
 	}
-	close(sfd);
+
+	server_address.sin_family = AF_INET;
+        server_address.sin_port = htons(PORT_NUM);
+	server_address.sin_addr.s_addr = INADDR_ANY;
+	server_address.sin_zero[8] = '\0';
+
+	status = connect(clientSocket, (struct sockaddr*)&server_address, sizeof(server_address));
+
+	if (status < 0)
+	{
+		perror("Couldn't connect to server.");
+		exit(EXIT_FAILURE);
+	}
+
+	startListenThread(clientSocket);
+	
+	while(1) {
+		clientWrite(clientSocket, cd.username); 
+	}
+
+	close(clientSocket);
 
 	return 0;
 }
