@@ -24,7 +24,7 @@ void handle_client(int client_socket) {
             exit(EXIT_FAILURE);
         }
         printf("Received message: %s", buf);
-        if (strcmp(buf, DISCONNECT_KEYWORD) == 0) { // Use the disconnect keyword here
+        if (strcmp(buf, DISCONNECT_KEYWORD) == 0) { /* Use the disconnect keyword here */
             printf("Client disconnected.\n");
             close(client_socket);
             break;
