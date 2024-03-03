@@ -1,0 +1,8 @@
+==========================================================================
+Currently, multiple clients can connect to the server and send messages.
+There are no issues with clients being disconnected, or messages not showing up on the server.
+--------------------------------------------------------------------------
+TODO
+- Allow clients to disconnect from the server without using ctrl + c
+- Allow clients to see other users messages from their screen (not just on the server screen).
+===========================================================================
