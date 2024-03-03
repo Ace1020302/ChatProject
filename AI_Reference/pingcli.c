@@ -10,6 +10,7 @@
 #define BUF_SIZE 500
 #define SERVER_PORT "8888"
 #define SERVER_IP "127.0.0.1"
+#define DISCONNECT_KEYWORD "quit\n"
 
 int main(int argc, char *argv[]) {
     int sfd, s, bytes;
@@ -58,8 +59,8 @@ int main(int argc, char *argv[]) {
             exit(EXIT_FAILURE);
         }
 
-        if (strcmp(message, "quit\n") == 0) {
-            printf("Closing connection...\n");
+        if (strcmp(message, DISCONNECT_KEYWORD) == 0) {
+            printf("Disconnecting from server...\n");
             break;
         }
 
