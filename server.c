@@ -14,7 +14,7 @@
 static int client_number = 0;
 static int num_of_clients = 0;
 static int connected = 0;
-int client_socket;
+int sfd; // Socket File Descriptor
 
 struct client_struct{
 				struct sockaddr_in address;
@@ -62,7 +62,7 @@ void message(char *msg, int sending_client_id){
 				{
 								if(clients[i] && clients[i]->client_id != sending_client_id)
 								{
-												write(clients[i]->socket_descriptor, msg, strlen(msg));
+												send(clients[i]->socket_descriptor, msg, strlen(msg), 0);
 								}
 				}
 
@@ -75,22 +75,25 @@ void *manage_connections(void *arg){
 
 				struct client_struct *client = (struct client_struct *)arg;
 
-				message(buf, client->client_id);
+				//message(buf, client->client_id);
+				//printf("%s\n", buf);
 				// https://www.man7.org/linux/man-pages/man3/memset.3.html
 				memset(buf, 0, BUF_SIZE);
 
 				while(1)
 				{
-								int recvNum = recv(client_socket, buf, BUF_SIZE, 0);
+								int recvNum = recv(sfd, buf, BUF_SIZE, 0);
 								//buf[num_of_bytes] = '\0';
+								
 								printf("Message from client: %s\n", buf);
-								memset(buf, 0, BUF_SIZE);
+								//memset(buf, 0, BUF_SIZE);
 								//send(client_socket, msg, strlen(msg), 0);
 
 								if(recvNum > 0)
 								{
+										printf("PID: %d; server received %s\n", getpid(), buf);
 										message(buf, client->client_id);
-										printf("%s/n", buf);
+										//printf("%s\n", buf);
 								}
 								else if(strcasecmp(buf, "exit") == 0)
 								{
@@ -101,7 +104,7 @@ void *manage_connections(void *arg){
 								}
 								memset(buf, 0, BUF_SIZE);
 				}
-				close(client_socket);
+				close(sfd);
 				dequeue_client(client->client_id);
 
 				free(client);
@@ -145,9 +148,9 @@ int main(int argc, char *argv[])
 
 				int length_addr = sizeof(connection_address);
 
-				connected_clients[num_of_clients++] = client_socket;
+				connected_clients[num_of_clients++] = sfd;
 
-				if (client_socket < 0) {
+				if (sfd < 0) {
 								perror("Couldn't establish connection to client");
 								exit(EXIT_FAILURE);
 				}
@@ -155,7 +158,7 @@ int main(int argc, char *argv[])
 				printf("CSCI 3160 - Stupid Discord Server:\n");
 
 				while(!(connected)){
-								client_socket = accept(socket_descriptor, (struct sockaddr*)&connection_address, &length_addr);
+								sfd = accept(socket_descriptor, (struct sockaddr*)&connection_address, &length_addr);
 								struct client_struct *client = (struct client_struct *)malloc(sizeof(struct client_struct));
 								client->address = connection_address;
 								
