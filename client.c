@@ -7,20 +7,26 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-#define PORT_NUM 3500
 #define BUF_SIZE 500
 
 void listenOnNewThread(int socketfd);
 void readConsole(int socketfd);
 void listenAndPrint(int socketfd);
 
-int main()
+int main(int argc, char *argv[])
 {
 	struct sockaddr_in server_address;
 	char msg[BUF_SIZE];
 	char buf[BUF_SIZE];
 	int s = socket(AF_INET, SOCK_STREAM, 0);
 	int status = 0;
+	int portNum = 3500;
+	
+	if(argv[1] != NULL)
+	{
+		//printf(argv[1]);
+		portNum = atoi(argv[1]);
+	}
 
 	if(s < 0)
 	{
@@ -29,7 +35,7 @@ int main()
 	}
 
 	server_address.sin_family = AF_INET;
-	server_address.sin_port = htons(PORT_NUM); // Instead of PORT_NUM use argv[?] to allow any vacant port
+	server_address.sin_port = htons(portNum); // Instead of PORT_NUM use argv[?] to allow any vacant port
 	server_address.sin_addr.s_addr = INADDR_ANY;
 	server_address.sin_zero[8] = '\0';
 
@@ -42,14 +48,14 @@ int main()
 	}
 
 	/*
-	while(1)//!(strcmp(msg, "exit")))
-	{
-		printf("Message: \n");
-		fgets(msg, BUF_SIZE, stdin);
-		//msg[BUF_SIZE - 1] = '\0';
-		send(s, msg, strlen(msg), 0);
-		//read(s, buf, 100);
-		printf("Message from client: %s\n", msg);
+	   while(1)//!(strcmp(msg, "exit")))
+	   {
+	   printf("Message: \n");
+	   fgets(msg, BUF_SIZE, stdin);
+	//msg[BUF_SIZE - 1] = '\0';
+	send(s, msg, strlen(msg), 0);
+	//read(s, buf, 100);
+	printf("Message from client: %s\n", msg);
 	}
 	*/
 
@@ -97,7 +103,7 @@ void readConsole(int socketfd)
 
 	printf("Enter your username: ");
 	nameCount = getline(&name, &nameSize, stdin);
-	
+
 	name[nameCount - 1] = 0;
 	//welcome = ("Welcome to the server %s!", name);
 	//amountSent = send(socketfd, welcome, sizeof(welcome), 0);
