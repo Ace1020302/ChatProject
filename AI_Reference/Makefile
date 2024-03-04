@@ -11,3 +11,6 @@ pingser: pingser.c
 
 pingcli: pingcli.c
     gcc -o pingcli pingcli.c
+
+clean:
+      rm -f server client pingser pingcli
