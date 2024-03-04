@@ -22,6 +22,6 @@ server: server.c
 client: client.c
 	gcc -o client pingcli.c
 
-clean: server client
+clean:
 	rm server
 	rm client
