@@ -25,7 +25,7 @@ int main()
 	}
 
 	server_address.sin_family = AF_INET;
-	server_address.sin_port = htons(PORT_NUM);
+	server_address.sin_port = htons(PORT_NUM);// Instead of PORT_NUM use argv[?] to allow any vacant port
 	server_address.sin_addr.s_addr = INADDR_ANY;
 	server_address.sin_zero[8] = '\0';
 
