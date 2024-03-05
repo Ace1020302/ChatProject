@@ -10,6 +10,8 @@
 
 #define MAX_CLIENTS 5
 #define BUF_SIZE 500
+#define PORT_NUM 3500
+#define MAX_NAME_LENGTH 20
 
 static int client_number = 0;
 static int num_of_clients = 0;
@@ -23,6 +25,7 @@ struct client_struct{
 
 	int socket_descriptor;
 	int client_id;
+	char userName[MAX_NAME_LENGTH];
 };
 
 struct client_struct *clients[MAX_CLIENTS];
@@ -72,12 +75,14 @@ void message(char *msg, int sending_client_id){
 void *manage_connections(void *arg){
 	char buf[BUF_SIZE];
 	int connected = 0;
-
+	char uname_set[MAX_NAME_LENGTH];
 	struct client_struct *client = (struct client_struct *)arg;
 
 	//message(buf, client->client_id);
 	//printf("%s\n", buf);
 	// https://www.man7.org/linux/man-pages/man3/memset.3.html
+	recv(client->socket_descriptor, uname_set, MAX_NAME_LENGTH, 0);
+	strcpy(client->userName, uname_set);
 	memset(buf, 0, BUF_SIZE);
 
 	while(1)
@@ -85,7 +90,7 @@ void *manage_connections(void *arg){
 		int recvNum = recv(sfd, buf, BUF_SIZE, 0);
 		//buf[num_of_bytes] = '\0';
 
-		printf("Message from client: %s\n", buf);
+		//printf("Message from client: %s\n", buf);
 		//memset(buf, 0, BUF_SIZE);
 		//send(client_socket, msg, strlen(msg), 0);
 
@@ -95,15 +100,18 @@ void *manage_connections(void *arg){
 			message(buf, client->client_id);
 			//printf("%s\n", buf);
 		}
-		else if(strcasecmp(buf, "exit") == 0)
+		// Exist Case
+		else if(strcasecmp(buf, "exit") == 0 || recvNum == 0)
 		{
-			sprintf(buf, "%s has left the chat", client->client_id);
+			sprintf(buf, "%s has left the chat", client->userName);
 			printf("%s\n", buf);
 			message(buf, client->client_id);
 			break;
 		}
+
 		memset(buf, 0, BUF_SIZE);
 	}
+	// Close the client socket
 	close(sfd);
 	dequeue_client(client->client_id);
 
@@ -122,14 +130,6 @@ int main(int argc, char *argv[])
 	unsigned connected_clients[MAX_CLIENTS];
 	pthread_t pid;
 
-	int portNum = 3500;
-	if(argv[1] != NULL)
-	{
-		//printf(argv[1]);
-		portNum = atoi(argv[1]);
-	}
-
-
 	socket_descriptor = socket(AF_INET, SOCK_STREAM, 0);
 	if(socket_descriptor < 0) {
 		perror("Socket creation failed");
@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
 	}
 
 	server_address.sin_family = AF_INET;
-	server_address.sin_port = htons(portNum);
+	server_address.sin_port = htons(PORT_NUM);
 	server_address.sin_addr.s_addr = INADDR_ANY;
 	server_address.sin_zero[8] = '\0';
 	status = bind(socket_descriptor, (struct sockaddr*)&server_address, sizeof(struct sockaddr));
@@ -169,6 +169,7 @@ int main(int argc, char *argv[])
 		sfd = accept(socket_descriptor, (struct sockaddr*)&connection_address, &length_addr);
 		struct client_struct *client = (struct client_struct *)malloc(sizeof(struct client_struct));
 		client->address = connection_address;
+		client->socket_descriptor = sfd;
 
 		enqueue_client(client);
 		// https://www.man7.org/linux/man-pages/man3/pthread_create.3.html
