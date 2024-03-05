@@ -5,95 +5,165 @@
 #include <fcntl.h>
 #include <string.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <sys/wait.h>
+#include <pthread.h>
+#include <errno.h>
 
+#define MAX_CLIENTS 5
 #define BUF_SIZE 500
-#define PORT_NUM 8888
-#define DISCONNECT_KEYWORD "quit\n"
 
-/* Function to handle communication with a client */
-void handle_client(int client_socket) {
-    char buf[BUF_SIZE];
-    ssize_t nread;
+static int num_of_clients = 0;
+int sfd; // Socket File Descriptor
 
-    while (1) {
-        memset(buf, 0, BUF_SIZE);
-        if ((nread = recv(client_socket, buf, BUF_SIZE, 0)) == -1) {
-            perror("recv");
-            exit(EXIT_FAILURE);
-        }
-        printf("Received message: %s", buf);
-        if (strcmp(buf, DISCONNECT_KEYWORD) == 0) { /* Use the disconnect keyword here */
-            printf("Client disconnected.\n");
-            close(client_socket);
+struct client_struct{
+    struct sockaddr_in address;
+    struct client_struct *next;
+    struct client_struct *prev;
+
+    int socket_descriptor;
+    int client_id;
+};
+
+struct client_struct *clients[MAX_CLIENTS];
+
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+void enqueue_client(struct client_struct *client){
+    pthread_mutex_lock(&lock);
+
+    for(int i = 0; i < MAX_CLIENTS; ++i){
+        if(!clients[i]){
+            clients[i] = client;
+            clients[i]->client_id = i + 1;
+            num_of_clients++;
             break;
         }
-        if (send(client_socket, buf, nread, 0) == -1) {
-            perror("send");
-            exit(EXIT_FAILURE);
-        }
     }
+    pthread_mutex_unlock(&lock);
 }
 
-int main() {
-    int sfd, s;
-    struct sockaddr_in server_address, client_address;
-    socklen_t client_addr_len;
+void dequeue_client(int client_id){
+    pthread_mutex_lock(&lock);
 
-    /* Create a socket */
-    sfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sfd < 0) {
+    clients[client_id - 1] = NULL;
+    num_of_clients--;
+
+    pthread_mutex_unlock(&lock);
+}
+
+void message(char *msg, int sending_client_id){
+    pthread_mutex_lock(&lock);
+
+    for(int i = 0; i < MAX_CLIENTS; ++i)
+    {
+        if(clients[i] && clients[i]->client_id != sending_client_id)
+        {
+            send(clients[i]->socket_descriptor, msg, strlen(msg), 0);
+        }
+    }
+
+    pthread_mutex_unlock(&lock);
+}
+
+void *manage_connections(void *arg){
+    char buf[BUF_SIZE];
+
+    struct client_struct *client = (struct client_struct *)arg;
+
+    memset(buf, 0, BUF_SIZE);
+
+    while(1)
+    {
+        int recvNum = recv(client->socket_descriptor, buf, BUF_SIZE, 0);
+
+        if(recvNum > 0)
+        {
+            printf("Message from client %d: %s\n", client->client_id, buf);
+            message(buf, client->client_id);
+
+            if(strcasecmp(buf, "quit") == 0)
+            {
+                printf("Client %d has left the chat\n", client->client_id);
+                message("You have left the chat.\n", client->client_id);
+                break; // Exit the loop and thread
+            }
+        }
+        else if(recvNum == 0)
+        {
+            printf("Client %d disconnected\n", client->client_id);
+            break; // Exit the loop and thread
+        }
+        else
+        {
+            perror("Error receiving data from client");
+            break; // Exit the loop and thread
+        }
+
+        memset(buf, 0, BUF_SIZE);
+    }
+
+    close(client->socket_descriptor);
+    dequeue_client(client->client_id);
+    free(client);
+
+    pthread_detach(pthread_self());
+}
+
+int main(int argc, char *argv[])
+{
+    int socket_descriptor;
+    struct sockaddr_in server_address, connection_address;
+    pthread_t pid;
+
+    int portNum = 3500;
+    if(argv[1] != NULL)
+    {
+        portNum = atoi(argv[1]);
+    }
+
+    socket_descriptor = socket(AF_INET, SOCK_STREAM, 0);
+    if(socket_descriptor < 0) {
         perror("Socket creation failed");
         exit(EXIT_FAILURE);
     }
 
-    /* Set up server address */
     server_address.sin_family = AF_INET;
-    server_address.sin_port = htons(PORT_NUM);
+    server_address.sin_port = htons(portNum);
     server_address.sin_addr.s_addr = INADDR_ANY;
+    server_address.sin_zero[8] = '\0';
+    int status = bind(socket_descriptor, (struct sockaddr*)&server_address, sizeof(struct sockaddr));
 
-    /* Bind socket to server address */
-    if (bind(sfd, (struct sockaddr*)&server_address, sizeof(server_address)) < 0) {
+    if(status < 0) {
         perror("Bind failed");
         exit(EXIT_FAILURE);
     }
 
-    /* Listen for incoming connections */
-    if (listen(sfd, 5) < 0) {
+    status = listen(socket_descriptor, MAX_CLIENTS); //Max of 5 clients
+
+    if (status < 0) {
         perror("Listen failed");
         exit(EXIT_FAILURE);
     }
 
-    printf("Server listening on port %d...\n", PORT_NUM);
+    printf("CSCI 3160 - Stupid Discord Server:\n");
 
-    while (1) {
-        int client_socket;
-        client_addr_len = sizeof(client_address);
-        client_socket = accept(sfd, (struct sockaddr*)&client_address, &client_addr_len);
-        if (client_socket < 0) {
-            perror("Accept failed");
-            continue;
+    while(1){
+        socklen_t length_addr = sizeof(connection_address);
+        sfd = accept(socket_descriptor, (struct sockaddr*)&connection_address, &length_addr);
+
+        if (sfd < 0) {
+            perror("Couldn't establish connection to client");
+            exit(EXIT_FAILURE);
         }
 
-        pid_t pid = fork();
-        if (pid == -1) {
-            perror("Fork failed");
-            close(client_socket);
-            continue;
-        }
+        struct client_struct *client = (struct client_struct *)malloc(sizeof(struct client_struct));
+        client->address = connection_address;
+        client->socket_descriptor = sfd;
 
-        if (pid == 0) { /* Child process */
-            close(sfd); /* Close listening socket in child process */
-            handle_client(client_socket); /* Function to handle client communication */
-            close(client_socket); /* Close client socket in child process */
-            exit(EXIT_SUCCESS); /* Exit child process */
-        } else { /* Parent process */
-            close(client_socket); /* Close client socket in parent process */
-        }
+        enqueue_client(client);
+        pthread_create(&pid, NULL, &manage_connections, (void*)client);
     }
 
-    close(sfd);
+    close(socket_descriptor);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
